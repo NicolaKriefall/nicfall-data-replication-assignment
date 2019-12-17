@@ -73,19 +73,20 @@ mv SNP.DP3g95p5maf05.HWE.recode.vcf scallops.vcf
 
 Then transferred the new .vcf file to my local directory.
 
-The authors say they use adegenet to make the following PCA: 
+The authors say they use adegenet to make the following PCA:
 
-![pca_fig]("/images/pca.png")
+![](images/pca.png)
 
-```{r eval = FALSE}
+In the next part of code I also use adegenet, but I think they had slightly different input data, perhaps genepop formatted data input rather than the .vcf that I use. Regardless, the output looks similar. 
 
-
+```{r}
 #install.packages("vcfR")
-library(vcfR)
-library(adegenet)
-library(vegan) 
-library(stringr)
-gl=vcfR2genlight(read.vcfR("~/Google Drive/an597_project/scallops.vcf")) #output from angsd
+suppressMessages(library(vcfR))
+suppressMessages(library(adegenet))
+suppressMessages(library(vegan))
+suppressMessages(library(stringr))
+
+#gl=vcfR2genlight(read.vcfR("scallops.vcf")) #output
 
 #gl=vcfR2genlight(read.vcfR("~/Google Drive/Moorea/2brad_moorea/don_nolink.recode.vcf")) #output from angsd
 
@@ -100,21 +101,17 @@ gl=vcfR2genlight(read.vcfR("~/Google Drive/an597_project/scallops.vcf")) #output
 # temp <- density(myFreq)
 # lines(temp$x, temp$y*1.8,lwd=3)
 
-pops=read.table("~/Google Drive/an597_project/pops.inds",sep="\t") #bams file with a 2nd column describing variable of interest
+#pops=read.table("~/Google Drive/an597_project/pops.inds",sep="\t") #bams file with a 2nd column describing variable of interest
 #pops=read.table("bamscl_year_no8.txt",sep="\t") #another variable I looked at
 
-pop(gl)=pops$V2 #you can have other columns with other variables in other columns, select which one for analysis here
-pca=glPca(gl,nf=3,parallel=F) #make pca
+#pop(gl)=pops$V2 #you can have other columns with other variables in other columns, select which one for analysis here
+#pca=glPca(gl,nf=3,parallel=F) #make pca
 
 #nice pca
-quartz()
-plot(pca$scores[,1:2],col=transp(as.numeric(as.factor(pop(gl))),0.3),pch=19)
-ordispider(pca$scores[,1:2],pop(gl),col=as.numeric(as.factor(pop(gl))),label=T)
-ordiellipse(pca$scores[,1:2],pops$V2,label=T,draw="polygon",col="grey90")
-
-
-
-
+#quartz()
+#lot(pca$scores[,1:2],col=transp(as.numeric(as.factor(pop(gl))),0.3),pch=19)
+#ordispider(pca$scores[,1:2],pop(gl),col=as.numeric(as.factor(pop(gl))),label=T)
+#ordiellipse(pca$scores[,1:2],pops$V2,label=T,draw="polygon",col="grey90")
 
 ```
 
