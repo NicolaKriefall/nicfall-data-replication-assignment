@@ -1,0 +1,127 @@
+---
+title: "AN597_finalproject"
+author: "Nicola Kriefall"
+date: "10/23/2019"
+output: 
+  html_document:
+    number_sections: TRUE
+---
+
+# Background
+
+As an assignment for Dr. Christopher Schmitt's [Project Design & Statistics course](https://fuzzyatelin.github.io/bioanth-stats/overview.html) at Boston University, we were asked to choose a scientific paper in order to replicate analyses. I chose Mallory Van Wyngaarden's [2016 population genetics paper on sea scallops](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5192885/). 
+
+## About the study
+
+The study sampled sea scallops from locations across the East Coast of the US & Canada & conducted RAD sequencing.
+
+## Accessing the data
+
+All raw sequencing is publicly available at NCBI's short read archive, project: [PRJNA340326](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA340326/). I'm not going to use the raw data because there are too many steps & gaps between this raw data & later analyses that I wouldn't be able to fill without asking the authors. 
+
+Instead, the authors kindly provide a .vcf file with the single nucleotide polymorphisms (SNPs) listed [here](https://datadryad.org/stash/dataset/doi:10.5061/dryad.2nh23). There's a button on the rightside column that says "Download dataset ~ 7 MB". The authors note that this file contains the 7,216 SNPs present before filtering for Hardy-Weinberg Equilibrium (HWE).
+
+# Getting started
+
+## Filter for Hardy-Weinberg Equilibrium (HWE)
+
+Authors found that 7,163 SNPs (out of 7,216 total) met HWE assumptions.
+
+Loci were filtered for HWE p value < 0.05 in 6 or more populations. I couldn't figure out how to do it in Genepop like the authors did, but followed the instructions from ddocent for HWE SNP filtering [here](http://www.ddocent.com/filtering/) & did it that way. 
+
+First, you have to have your vcf file, a 2-column tab-delimited file that lists your sample name in the first column & the population in the second column, the custom script from ddocent (raw script located [here](https://github.com/jpuritz/dDocent/raw/master/scripts/filter_hwe_by_pop.pl), I named it "filter.pl") and access to a few programs: vcflib & vcftools. Luckily these programs are on my computer's super computing cluster.
+
+I'm in Unix here, using Terminal on Mac. I logged into BU's super computing cluster. I downloaded the .vcf file from the dryad site above & put it in my local directory. I also made a 2-column tab-separated file called 'pops.inds' which has the sample names in one column & the population they belong to in the second column (gleaned this information from their well designed sampling name scheme in the vcf file)
+
+```{bash, eval = FALSE}
+#loading necessary programs
+module load vcflib
+module load vcftools
+
+#I have to make the local script exectuable
+chmod +x ./filter.pl
+
+#first doing a few processing things for setting up the vcf for filtering
+#this is copied from the ddocent website: "Let’s filter our SNPs by population specific HWE. First, we need to convert our variant calls to SNPs. To do this we will use another command from vcflib called vcfallelicprimatives"
+vcfallelicprimitives VanWyngaardenM_etal_PopStructure_SNPMap4b.vcf --keep-info --keep-geno > DP3g95p5maf05.prim.vcf
+
+#more from ddocent: This will decompose complex variant calls into phased SNP and INDEL genotypes and keep the INFO flags for loci and genotypes. Next, we can feed this VCF file into VCFtools to remove indels."
+vcftools --vcf DP3g95p5maf05.prim.vcf --remove-indels --recode --recode-INFO-all --out SNP.DP3g95p5maf05
+
+#now for the HWE filter:
+./filter.pl -v SNP.DP3g95p5maf05.recode.vcf -p pops.inds -o SNP.DP3g95p5maf05.HWE -h 0.05 -c 0.42
+#filter.pl is the local script
+#pops.inds is my 2-column samples & populations file
+#-o is the output
+#-h is my alpha for HWE, the authors did 0.05 (i.e. p < 0.05)
+#-c is specifying that I only want the site gone if it shows up in 7/12 populations
+
+#output looks like this:
+#Outputting results of HWE test for filtered loci to 'filtered.hwe'
+#Kept 7163 of a possible 7216 loci (filtered 53 loci)
+```
+
+53 loci is exactly how many the authors said were removed during their HWE filtering - dope. 
+
+Now time for some plotting
+
+```{bash eval = FALSE}
+#just renaming the unwieldy output that ddocent gives you in their pipeline
+mv SNP.DP3g95p5maf05.HWE.recode.vcf scallops.vcf
+#honestly what on earth is that naming scheme
+```
+
+Then transferred the new .vcf file to my local directory.
+
+The authors say they use adegenet to make the following PCA: 
+
+![pca_fig]("/images/pca.png")
+
+```{r eval = FALSE}
+
+
+#install.packages("vcfR")
+library(vcfR)
+library(adegenet)
+library(vegan) 
+library(stringr)
+gl=vcfR2genlight(read.vcfR("~/Google Drive/an597_project/scallops.vcf")) #output from angsd
+
+#gl=vcfR2genlight(read.vcfR("~/Google Drive/Moorea/2brad_moorea/don_nolink.recode.vcf")) #output from angsd
+
+##some visualizations
+# glPlot(gl, posi="topleft")
+##white blocks would indicate missing data
+
+##allele frequency spectrum
+# myFreq <- glMean(gl)
+# hist(myFreq, proba=TRUE, col="gold", xlab="Allele frequencies",
+#      main="Distribution of (second) allele frequencies")
+# temp <- density(myFreq)
+# lines(temp$x, temp$y*1.8,lwd=3)
+
+pops=read.table("~/Google Drive/an597_project/pops.inds",sep="\t") #bams file with a 2nd column describing variable of interest
+#pops=read.table("bamscl_year_no8.txt",sep="\t") #another variable I looked at
+
+pop(gl)=pops$V2 #you can have other columns with other variables in other columns, select which one for analysis here
+pca=glPca(gl,nf=3,parallel=F) #make pca
+
+#nice pca
+quartz()
+plot(pca$scores[,1:2],col=transp(as.numeric(as.factor(pop(gl))),0.3),pch=19)
+ordispider(pca$scores[,1:2],pop(gl),col=as.numeric(as.factor(pop(gl))),label=T)
+ordiellipse(pca$scores[,1:2],pops$V2,label=T,draw="polygon",col="grey90")
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
