@@ -63,60 +63,175 @@ vcftools --vcf DP3g95p5maf05.prim.vcf --remove-indels --recode --recode-INFO-all
 
 53 loci is exactly how many the authors said were removed during their HWE filtering - dope. 
 
-Now time for some plotting
-
-```{bash eval = FALSE}
-#just renaming the unwieldy output that ddocent gives you in their pipeline
+```{bash, eval = FALSE}
+#Finally just renaming the unwieldy output that ddocent gives you in their pipeline
 mv SNP.DP3g95p5maf05.HWE.recode.vcf scallops.vcf
 #honestly what on earth is that naming scheme
 ```
 
-Then transferred the new .vcf file to my local directory.
+# Plotting PCA
 
-The authors say they use adegenet to make the following PCA:
+Now time for some plotting. I transferred the new .vcf file to my local directory.
 
-![](images/pca.png)
-
-In the next part of code I also use adegenet, but I think they had slightly different input data, perhaps genepop formatted data input rather than the .vcf that I use. Regardless, the output looks similar. 
+The authors say they use adegenet to make the PCA. In the next part of code I also use adegenet, but I think they had slightly different input data, perhaps genepop formatted data input rather than the .vcf that I use.
 
 ```{r}
 #install.packages("vcfR")
 suppressMessages(library(vcfR))
 suppressMessages(library(adegenet))
 suppressMessages(library(vegan))
-suppressMessages(library(stringr))
+#suppressMessages(library(stringr))
 
-#gl=vcfR2genlight(read.vcfR("scallops.vcf")) #output
+#convert vcf to a genlight object for plotting
+gl=vcfR2genlight(read.vcfR("scallops.vcf")) 
 
-#gl=vcfR2genlight(read.vcfR("~/Google Drive/Moorea/2brad_moorea/don_nolink.recode.vcf")) #output from angsd
+#reading in population information
+pops=read.table("pops.inds",sep="\t") 
 
-##some visualizations
-# glPlot(gl, posi="topleft")
-##white blocks would indicate missing data
+#assigning populations to the genlight object
+pop(gl)=pops$V2 
 
-##allele frequency spectrum
-# myFreq <- glMean(gl)
-# hist(myFreq, proba=TRUE, col="gold", xlab="Allele frequencies",
-#      main="Distribution of (second) allele frequencies")
-# temp <- density(myFreq)
-# lines(temp$x, temp$y*1.8,lwd=3)
+#make the pca
+pca=glPca(gl,nf=3,parallel=F) 
+#nf means the number of principal components to retain, here we do 3
+#parallel would just be a threads processing thing, not doing that here
 
-#pops=read.table("~/Google Drive/an597_project/pops.inds",sep="\t") #bams file with a 2nd column describing variable of interest
-#pops=read.table("bamscl_year_no8.txt",sep="\t") #another variable I looked at
-
-#pop(gl)=pops$V2 #you can have other columns with other variables in other columns, select which one for analysis here
-#pca=glPca(gl,nf=3,parallel=F) #make pca
-
-#nice pca
-#quartz()
-#lot(pca$scores[,1:2],col=transp(as.numeric(as.factor(pop(gl))),0.3),pch=19)
-#ordispider(pca$scores[,1:2],pop(gl),col=as.numeric(as.factor(pop(gl))),label=T)
-#ordiellipse(pca$scores[,1:2],pops$V2,label=T,draw="polygon",col="grey90")
-
+#plotting
+plot(pca$scores[,1:2],col=transp(as.numeric(as.factor(pop(gl))),0.3),pch=19)
+ordiellipse(pca$scores[,1:2],pops$V2,label=F,draw="lines")
 ```
 
+The authors' PCA for comparison:
 
+![](images/pca.png)
 
+So I get the mirror image of the author's figure for some reason. But the pattern holds: the one divergent site by itself, then three sites clustering together, and then all the other sites together in a big mess.
+
+# Expected heterozgyosity analysis
+
+The authors report the expected heterozygosity average +/- the standard deviation. They said they used gstudio for that, but that requires the genepop format of the data, while I have a vcf, so I'm using hierfstat from a vcf to genind object instead because that's what I could figure out how to use.
+
+```{r}
+library(hierfstat)
+library(adegenet)
+
+#read in the data 
+vcf <- read.vcfR("scallops.vcf")
+#read in the population files
+pop <- read.table("pops.inds")
+#transform vcf file to genind object
+genind <- vcfR2genind(vcf)
+#assign populations
+pop(genind) <- pop$V2
+
+#calculate diversity statistics
+div <- summary(genind)
+#my attempts to extract just the expected heterozygosity data - there's definitely an easier way
+het <- as.data.frame(div[["Hexp"]])
+new <- c(het[1:7163,])
+new2 <- as.data.frame(new)
+
+#finally, the mean & standard deviation of the expected heterozygosity
+mean(new2$new)
+sd(new2$new)
+```
+
+The authors reported the same thing as me: "expected heterozygosity averaged 0.2710 ± 0.1333 (mean ± SD)"
+
+# Isolation by distance analysis
+
+To assess isolation by distance, authors performed a linear regression to get the R-squared value for their data's fit between the pairwise population Fst values (transformed to FST/(1-FST)) & distance (km), then assessed the significance using a Mantel test. I don't understand why the two different tests for the same data but I'll do it anyway. 
+
+I made the ibd data file in Excel based on their provided matrices of 1. fst & 2. distance (km). Then I used these same matrices for the Mantel test. Each of these tests were done once for the Fst values based on all their loci, then again based on just outlier loci.
+
+```{r}
+#packages
+suppressMessages(library(ggplot2))
+suppressMessages(library(cowplot))
+
+#read in ibd data file
+ibd <- read.csv("ibd.csv")
+
+#all the loci fst values
+all <- subset(ibd,fst_type=="all")
+
+#transforming the fst values the same way the authors do
+all$fst_trans <- all$fst/(1-all$fst)
+
+lm1 <- lm(fst_trans~km,data=all)
+summary(lm1)
+#super significant
+#R-squared value = 0.1672
+#authors reported an R2 of 0.16
+
+#now for the outlier loci:
+outliers <- subset(ibd,fst_type=="outliers")
+
+#transforming the fst values the same way the authors do
+outliers$fst_trans <- outliers$fst/(1-outliers$fst)
+
+lm2 <- lm(fst_trans~km,data=outliers)
+summary(lm2)
+#super significant
+#R-squared value = 0.1653
+#authors reported an R2 of 0.16 again
+```
+
+Mantel test time. First for all loci, then just outlier loci. 
+
+```{r}
+library(ade4)
+
+#read in distance data
+dist <- read.csv("distance.csv",header=FALSE)
+#read in fst data
+fst <- read.csv("fst.csv",header=FALSE)
+#transform the fst data like the authors do
+fst_trans <- fst/(1-fst)
+head(dist)
+head(fst_trans)
+
+#create a 'dist' matrix, required for Mantel test
+dist.mat <- as.dist(dist)
+fst.mat <- as.dist(fst_trans)
+
+mantel.rtest(dist.mat,fst.mat,nrep=9999)
+#p = 0.0344 for all loci
+
+#just outlier loci now
+#same distance matrix because the sites are the same
+fst_out <- read.csv("fst_outliers.csv",header=FALSE)
+fst_out_trans <- fst_out/(1-fst_out)
+head(fst_out_trans)
+
+#create a 'dist' matrix, required for Mantel test
+fstout.mat <- as.dist(fst_out_trans)
+fstout.mat
+
+mantel.rtest(dist.mat,fstout.mat,nrep=9999)
+#p-value = 0.0175
+```
+
+The authors reported p < 0.05 & p < 0.01 for their Mantel tests for all & outlier loci, respectively, which is also what I just got! Amazing. 
+
+Plotting the results. 
+
+```{r}
+ibd$fst_trans <- ibd$fst/(1-ibd$fst)
+
+ggplot(ibd,aes(x=km,y=fst_trans,color=fst_type,shape=fst_type))+
+  geom_point()+
+  theme_cowplot()+
+  scale_color_manual(values=c("red","blue"))+
+  scale_shape_manual(values=c(15,17))+
+  geom_smooth(method = "lm",se=F)+
+  xlab("Distance (km)")+
+  ylab("Fst/1-Fst")
+```
+
+How the author's one looks in comparison (I just did 'a' so the y-axis cut off a bit):
+
+![](images/ibd.png)
 
 
 
