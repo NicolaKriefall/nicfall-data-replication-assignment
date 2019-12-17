@@ -11,6 +11,8 @@ output:
 
 As an assignment for Dr. Christopher Schmitt's [Project Design & Statistics course](https://fuzzyatelin.github.io/bioanth-stats/overview.html) at Boston University, we were asked to choose a scientific paper in order to replicate analyses. I chose Mallory Van Wyngaarden's [2016 population genetics paper on sea scallops](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5192885/). 
 
+As for the analyses I replicate, I chose first to use the .vcf file to plot a PCA of the results. Then, as a descriptive statistic, I calculate the expected heterozygosity from the .vcf file. I then conduct four inferential analyses on genetic isolation by distance - two linear regressions between pairwise FST & distance between sites (one on all loci & one on outlier loci) & two Mantel tests between the same data (the authors did both of these tests as well). Finally, I plotted the isolation by distance results.
+
 ## About the study
 
 The study sampled sea scallops from locations across the East Coast of the US & Canada & conducted RAD sequencing.

@@ -373,6 +373,7 @@ summary {
 <div id="background" class="section level1">
 <h1><span class="header-section-number">1</span> Background</h1>
 <p>As an assignment for Dr. Christopher Schmitt’s <a href="https://fuzzyatelin.github.io/bioanth-stats/overview.html">Project Design &amp; Statistics course</a> at Boston University, we were asked to choose a scientific paper in order to replicate analyses. I chose Mallory Van Wyngaarden’s <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5192885/">2016 population genetics paper on sea scallops</a>.</p>
+<p>As for the analyses I replicate, I chose first to use the .vcf file to plot a PCA of the results. Then, as a descriptive statistic, I calculate the expected heterozygosity from the .vcf file. I then conduct four inferential analyses on genetic isolation by distance - two linear regressions between pairwise FST &amp; distance between sites (one on all loci &amp; one on outlier loci) &amp; two Mantel tests between the same data (the authors did both of these tests as well). Finally, I plotted the isolation by distance results.</p>
 <div id="about-the-study" class="section level2">
 <h2><span class="header-section-number">1.1</span> About the study</h2>
 <p>The study sampled sea scallops from locations across the East Coast of the US &amp; Canada &amp; conducted RAD sequencing.</p>
@@ -660,11 +661,11 @@ mantel.rtest(dist.mat,fst.mat,nrep=9999)</code></pre>
 ## Observation: 0.408851 
 ## 
 ## Based on 9999 replicates
-## Simulated p-value: 0.0323 
+## Simulated p-value: 0.0358 
 ## Alternative hypothesis: greater 
 ## 
-##      Std.Obs  Expectation     Variance 
-##  1.955892212 -0.000170733  0.043732356</code></pre>
+##     Std.Obs Expectation    Variance 
+## 1.913803852 0.001615559 0.045278937</code></pre>
 <pre class="r"><code>#p = 0.0344 for all loci
 
 #just outlier loci now
@@ -720,11 +721,11 @@ fstout.mat</code></pre>
 ## Observation: 0.4065747 
 ## 
 ## Based on 9999 replicates
-## Simulated p-value: 0.0193 
+## Simulated p-value: 0.0172 
 ## Alternative hypothesis: greater 
 ## 
-##       Std.Obs   Expectation      Variance 
-##  2.2593916831 -0.0008481755  0.0325168022</code></pre>
+##      Std.Obs  Expectation     Variance 
+##  2.241465852 -0.003548896  0.033478448</code></pre>
 <pre class="r"><code>#p-value = 0.0175</code></pre>
 <p>The authors reported p &lt; 0.05 &amp; p &lt; 0.01 for their Mantel tests for all &amp; outlier loci, respectively, which is also what I just got! Amazing.</p>
 <p>Plotting the results.</p>
