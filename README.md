@@ -12,3 +12,4 @@ Files explanation:
 8. distance.csv - the matrix the authors provided for distance between sites in matrix form
 9. fst.csv - all the loci used to calculate pairwise FST between sites
 10. fst_outliers.csv - outlier loci used to calculate pairwise FST between sites
+11. 6.VanWyngaarden_etal_2016.pdf - .pdf of the paper I'm replicating
